@@ -131,5 +131,22 @@ def main():
     df_cd.to_csv(out_dir / "sample_cd_ecg.csv", index=False)
     print("Generated sample_cd_ecg.csv")
 
+    # Generate WFDB (.hea + .dat) records if wfdb is available
+    try:
+        import wfdb
+        for name, df in [("sample_normal_ecg", df_norm), ("sample_mi_ecg", df_mi), ("sample_cd_ecg", df_cd)]:
+            wfdb.wrsamp(
+                name,
+                fs=100,
+                units=["mV"] * 12,
+                sig_name=LEADS,
+                p_signal=df[LEADS].to_numpy(),
+                fmt=["16"] * 12,
+                write_dir=str(out_dir)
+            )
+            print(f"Generated WFDB record: {name}.hea and {name}.dat")
+    except ImportError:
+        print("wfdb not installed; skipped WFDB sample generation.")
+
 if __name__ == "__main__":
     main()

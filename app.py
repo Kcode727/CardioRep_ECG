@@ -7,6 +7,7 @@ Styled with a modern, clinical Dark Theme UI matching the research application s
 import os
 import time
 from pathlib import Path
+import tempfile
 import numpy as np
 import pandas as pd
 import torch
@@ -14,6 +15,8 @@ from torch import nn
 import streamlit as st
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import wfdb
+from scipy import signal as sp_signal
 
 # -----------------------------------------------------------------------------
 # Configuration & Constants
@@ -130,6 +133,18 @@ def parse_and_validate_ecg(file_bytes: bytes, filename: str) -> np.ndarray:
         raise ValueError("Uploaded file is empty.")
 
     fname = filename.lower()
+    if fname.endswith(".dat"):
+        raise ValueError(
+            "Uploaded a binary WFDB signal file (.dat) alone. In PTB-XL WFDB format, "
+            ".dat files contain packed binary ADC voltage integers and cannot be decoded without "
+            "their companion .hea header file. Please upload both the .hea and .dat files together."
+        )
+    if fname.endswith(".hea"):
+        raise ValueError(
+            "Uploaded a WFDB header file (.hea) alone. A .hea file contains only text metadata "
+            "and no ECG waveform samples. Please upload both the .hea and .dat files together."
+        )
+
     if fname.endswith(".csv") or fname.endswith(".txt"):
         import io
         df = pd.read_csv(io.BytesIO(file_bytes))
@@ -165,7 +180,7 @@ def parse_and_validate_ecg(file_bytes: bytes, filename: str) -> np.ndarray:
         else:
             raise ValueError(f"Invalid array shape {data.shape}. Expected (12, 1000) or (1000, 12).")
     else:
-        raise ValueError(f"Unsupported format '{filename}'. Please provide a .csv or .npy file.")
+        raise ValueError(f"Unsupported format '{filename}'. Please provide a .csv, .npy, or PTB-XL WFDB (.hea + .dat) pair.")
 
     arr = np.asarray(data, dtype=np.float32)
     if np.isnan(arr).any():
@@ -176,6 +191,144 @@ def parse_and_validate_ecg(file_bytes: bytes, filename: str) -> np.ndarray:
         raise ValueError(f"Excessive voltage detected ({np.abs(arr).max():.1f} mV). Signals must be calibrated in mV.")
 
     return arr
+
+
+def parse_and_validate_wfdb(hea_bytes: bytes, hea_filename: str, dat_bytes: bytes, dat_filename: str) -> tuple[np.ndarray, dict]:
+    """
+    Parses and validates a PTB-XL WFDB recording (.hea header + .dat binary signal).
+    Ensures correct 12-lead ordering, sampling rate (100 Hz / 1000 samples), units,
+    and returns a normalized-ready (12, 1000) float32 array and metadata.
+    """
+    if len(hea_bytes) == 0:
+        raise ValueError("WFDB header file (.hea) is empty.")
+    if len(dat_bytes) == 0:
+        raise ValueError("WFDB signal file (.dat) is empty.")
+
+    hea_stem = Path(hea_filename).stem
+    dat_stem = Path(dat_filename).stem
+
+    # Decode header text safely
+    try:
+        hea_text = hea_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        hea_text = hea_bytes.decode("latin-1")
+
+    lines = [line.strip() for line in hea_text.splitlines() if line.strip() and not line.strip().startswith("#")]
+    if not lines:
+        raise ValueError("WFDB header file (.hea) contains no valid header definitions.")
+
+    # Header line format: <record_name> <n_signals> <fs> <sig_len> ...
+    header_parts = lines[0].split()
+    if len(header_parts) < 4:
+        raise ValueError(f"Malformed WFDB header line: '{lines[0]}'. Expected '<record_name> <n_signals> <fs> <sig_len>'.")
+
+    internal_rec_name = header_parts[0]
+    try:
+        n_signals = int(header_parts[1])
+        fs = float(header_parts[2])
+        sig_len = int(header_parts[3])
+    except ValueError as e:
+        raise ValueError(f"Invalid numeric values in WFDB header: {str(e)}")
+
+    if n_signals != EXPECTED_LEADS_COUNT:
+        raise ValueError(f"WFDB record defines {n_signals} channels. Model strictly requires {EXPECTED_LEADS_COUNT} standard leads.")
+
+    # Extract all signal file names referenced in channel lines (e.g. '00001_lr.dat')
+    referenced_dat_files = set()
+    for ch_line in lines[1:1 + n_signals]:
+        parts = ch_line.split()
+        if parts:
+            referenced_dat_files.add(parts[0])
+
+    # Validate matching names between header and signal
+    if hea_stem.lower() != dat_stem.lower() and dat_filename not in referenced_dat_files:
+        raise ValueError(
+            f"Record mismatch: Header file '{hea_filename}' (record '{internal_rec_name}') "
+            f"does not match signal file '{dat_filename}' (references: {list(referenced_dat_files)})."
+        )
+
+    # Use a temporary directory to let official wfdb library parse the recording
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+
+        # Write uploaded files under their uploaded names
+        (tmp_path / hea_filename).write_bytes(hea_bytes)
+        (tmp_path / dat_filename).write_bytes(dat_bytes)
+
+        # Ensure internal record name is accessible
+        if not (tmp_path / f"{internal_rec_name}.hea").exists():
+            (tmp_path / f"{internal_rec_name}.hea").write_bytes(hea_bytes)
+
+        # Ensure all referenced .dat file names exist in tmpdir
+        for ref_dat in referenced_dat_files:
+            target_path = tmp_path / ref_dat
+            if not target_path.exists():
+                target_path.write_bytes(dat_bytes)
+
+        rec_stem = internal_rec_name if (tmp_path / f"{internal_rec_name}.hea").exists() else hea_stem
+        try:
+            record = wfdb.rdrecord(str(tmp_path / rec_stem))
+        except Exception as e:
+            raise ValueError(f"WFDB reader error: {str(e)}")
+
+    p_signal = record.p_signal
+    if p_signal is None or len(p_signal) == 0:
+        raise ValueError("WFDB record contains no decoded physical signals.")
+
+    n_samples, n_channels = p_signal.shape
+    if n_channels != EXPECTED_LEADS_COUNT:
+        raise ValueError(f"Decoded {n_channels} channels. Expected {EXPECTED_LEADS_COUNT} standard ECG leads.")
+
+    # Match and reorder lead names into standard 12-lead layout (I, II, III, aVR, aVL, aVF, V1-V6)
+    sig_names = record.sig_name or []
+    mapped_leads = [LEAD_ALIASES.get(str(s).strip().lower()) for s in sig_names]
+
+    if all(m is not None for m in mapped_leads) and len(set(mapped_leads)) == EXPECTED_LEADS_COUNT:
+        ordered_channels = []
+        for std_lead in STANDARD_LEADS:
+            idx = mapped_leads.index(std_lead)
+            ordered_channels.append(p_signal[:, idx])
+        ordered_data = np.stack(ordered_channels, axis=0)  # shape (12, n_samples)
+    else:
+        ordered_data = p_signal.T  # shape (12, n_samples)
+
+    # Handle sampling frequency and signal length
+    resampled = False
+    if ordered_data.shape[1] != EXPECTED_SIGNAL_LENGTH:
+        # Check if record is 500 Hz (e.g. PTB-XL high-resolution _hr recording)
+        if abs(fs - 500.0) < 1.0 or (fs != 100.0 and ordered_data.shape[1] > EXPECTED_SIGNAL_LENGTH):
+            ordered_data = sp_signal.resample(ordered_data, EXPECTED_SIGNAL_LENGTH, axis=1)
+            resampled = True
+        elif fs == 100.0 and ordered_data.shape[1] > EXPECTED_SIGNAL_LENGTH:
+            # Truncate to first 1000 samples (10 seconds)
+            ordered_data = ordered_data[:, :EXPECTED_SIGNAL_LENGTH]
+        else:
+            raise ValueError(
+                f"Invalid signal duration: Record has {ordered_data.shape[1]} samples at {fs} Hz "
+                f"({ordered_data.shape[1] / fs:.1f}s). Expected 10 seconds / {EXPECTED_SIGNAL_LENGTH} samples at 100 Hz."
+            )
+
+    arr = np.asarray(ordered_data, dtype=np.float32)
+
+    # Voltage & numerical integrity validation
+    if np.isnan(arr).any():
+        raise ValueError("WFDB signal contains NaN (Not a Number) values.")
+    if np.isinf(arr).any():
+        raise ValueError("WFDB signal contains infinite values.")
+    if np.abs(arr).max() > 50.0:
+        raise ValueError(f"Excessive voltage detected ({np.abs(arr).max():.1f} mV). Signals must be calibrated in mV.")
+
+    metadata = {
+        "record_name": record.record_name or hea_stem,
+        "fs": fs,
+        "original_samples": n_samples,
+        "leads": STANDARD_LEADS if all(m is not None for m in mapped_leads) else sig_names,
+        "units": record.units or ["mV"] * 12,
+        "resampled": resampled
+    }
+
+    return arr, metadata
+
 
 def run_inference(model: ECGClassifier, checkpoint_data: dict, raw_signal: np.ndarray, device: str):
     start = time.perf_counter()
@@ -1052,19 +1205,22 @@ elif page == "ECG Analysis":
 
             input_mode = st.segmented_control(
                 "Input Mode",
-                options=["Preloaded Samples", "Upload File (.csv / .npy)"],
+                options=["Preloaded Samples", "Upload File (.csv / .npy / WFDB)"],
                 default="Preloaded Samples",
                 label_visibility="collapsed"
             )
 
             active_signal = None
             signal_name = ""
+            wfdb_info = None
 
             if input_mode == "Preloaded Samples":
                 sample_options = [
-                    ("sample_normal_ecg.csv", "Normal Sinus Rhythm", "Absence of acute ST-elevation or significant conduction delay"),
-                    ("sample_mi_ecg.csv", "Acute Myocardial Infarction Pattern", "Marked ST-elevation & Q-wave morphology in anterolateral leads"),
-                    ("sample_cd_ecg.csv", "Conduction Disturbance Pattern", "Prolonged QRS duration characteristic of bundle branch block")
+                    ("sample_normal_ecg.csv", "Normal Sinus Rhythm (CSV)", "Absence of acute ST-elevation or significant conduction delay"),
+                    ("sample_mi_ecg.csv", "Acute Myocardial Infarction Pattern (CSV)", "Marked ST-elevation & Q-wave morphology in anterolateral leads"),
+                    ("sample_cd_ecg.csv", "Conduction Disturbance Pattern (CSV)", "Prolonged QRS duration characteristic of bundle branch block"),
+                    ("sample_normal_ecg.hea", "Normal Sinus Rhythm (PTB-XL WFDB: .hea + .dat)", "PTB-XL 12-lead WFDB record @ 100 Hz"),
+                    ("sample_mi_ecg.hea", "Myocardial Infarction Pattern (PTB-XL WFDB: .hea + .dat)", "PTB-XL 12-lead WFDB record @ 100 Hz")
                 ]
                 
                 selected_sample_tuple = st.radio(
@@ -1074,31 +1230,119 @@ elif page == "ECG Analysis":
                 )
                 sample_file = SAMPLES_DIR / selected_sample_tuple[0]
                 if sample_file.exists():
-                    raw_bytes = sample_file.read_bytes()
-                    active_signal = parse_and_validate_ecg(raw_bytes, selected_sample_tuple[0])
-                    signal_name = selected_sample_tuple[1]
+                    if selected_sample_tuple[0].endswith(".hea"):
+                        stem = sample_file.stem
+                        dat_file = SAMPLES_DIR / f"{stem}.dat"
+                        if dat_file.exists():
+                            active_signal, wfdb_info = parse_and_validate_wfdb(
+                                sample_file.read_bytes(), sample_file.name,
+                                dat_file.read_bytes(), dat_file.name
+                            )
+                            signal_name = selected_sample_tuple[1]
+                    else:
+                        raw_bytes = sample_file.read_bytes()
+                        active_signal = parse_and_validate_ecg(raw_bytes, selected_sample_tuple[0])
+                        signal_name = selected_sample_tuple[1]
             else:
-                uploaded = st.file_uploader(
-                    "Upload Compatible Signal File:",
-                    type=["csv", "npy", "txt"],
-                    help="Accepts .csv (1000 rows x 12 leads) or .npy (shape 12x1000)"
+                upload_style = st.radio(
+                    "Upload Method:",
+                    ["Drag & Drop / Multi-select (.csv, .npy, or .hea + .dat)", "Separate Inputs for WFDB (.hea and .dat)"],
+                    horizontal=False,
+                    label_visibility="collapsed"
                 )
-                if uploaded is not None:
-                    try:
-                        raw_bytes = uploaded.read()
-                        active_signal = parse_and_validate_ecg(raw_bytes, uploaded.name)
-                        signal_name = uploaded.name
-                        st.success(f"Validated: {uploaded.name} (12 leads, 1000 samples)")
-                    except Exception as e:
-                        st.error(f"Validation error: {str(e)}")
+
+                if upload_style == "Drag & Drop / Multi-select (.csv, .npy, or .hea + .dat)":
+                    uploaded_files = st.file_uploader(
+                        "Upload Compatible Signal File(s):",
+                        type=["csv", "npy", "txt", "dat", "hea"],
+                        accept_multiple_files=True,
+                        help="Upload a single .csv / .npy file, or select/drop both PTB-XL WFDB files (.hea and .dat) together."
+                    )
+                    if uploaded_files:
+                        hea_files = [f for f in uploaded_files if f.name.lower().endswith(".hea")]
+                        dat_files = [f for f in uploaded_files if f.name.lower().endswith(".dat")]
+                        csv_files = [f for f in uploaded_files if f.name.lower().endswith((".csv", ".txt"))]
+                        npy_files = [f for f in uploaded_files if f.name.lower().endswith(".npy")]
+
+                        # Case A: WFDB Pair (.hea + .dat)
+                        if len(hea_files) == 1 and len(dat_files) == 1 and not csv_files and not npy_files:
+                            try:
+                                h_f = hea_files[0]
+                                d_f = dat_files[0]
+                                active_signal, wfdb_info = parse_and_validate_wfdb(
+                                    h_f.read(), h_f.name, d_f.read(), d_f.name
+                                )
+                                signal_name = f"{wfdb_info['record_name']} (WFDB {int(wfdb_info['fs'])} Hz)"
+                                resample_note = " (Resampled from 500 Hz to 100 Hz)" if wfdb_info.get("resampled") else ""
+                                st.success(f"✓ Validated PTB-XL WFDB Record: {wfdb_info['record_name']} (12 leads, 1000 samples @ 100 Hz){resample_note}")
+                            except Exception as e:
+                                st.error(f"WFDB validation error: {str(e)}")
+
+                        # Case B: Solitary .dat file without .hea
+                        elif len(dat_files) > 0 and len(hea_files) == 0:
+                            st.error(
+                                f"⚠️ **Missing WFDB Header File:** You uploaded the binary signal file `{dat_files[0].name}`. "
+                                f"PTB-XL WFDB format stores packed binary ADC integers that require the matching `.hea` header "
+                                f"to decode channel gains, baselines, and sampling rate. Please select and upload both "
+                                f"`{Path(dat_files[0].name).stem}.hea` and `{dat_files[0].name}` together.\n\n"
+                                f"*(Note: Binary .dat files are not raw CSV or NumPy arrays and cannot be parsed without the header)*"
+                            )
+
+                        # Case C: Solitary .hea file without .dat
+                        elif len(hea_files) > 0 and len(dat_files) == 0:
+                            st.error(
+                                f"⚠️ **Missing WFDB Signal File:** You uploaded the header file `{hea_files[0].name}`. "
+                                f"The `.hea` file contains only metadata. Please select and upload both "
+                                f"`{hea_files[0].name}` and `{Path(hea_files[0].name).stem}.dat` together."
+                            )
+
+                        # Case D: Single CSV or NPY file
+                        elif len(uploaded_files) == 1 and (csv_files or npy_files):
+                            f = uploaded_files[0]
+                            try:
+                                raw_bytes = f.read()
+                                active_signal = parse_and_validate_ecg(raw_bytes, f.name)
+                                signal_name = f.name
+                                st.success(f"✓ Validated: {f.name} (12 leads, 1000 samples @ 100 Hz)")
+                            except Exception as e:
+                                st.error(f"Validation error: {str(e)}")
+
+                        # Case E: Conflicting multiple files
+                        else:
+                            st.error(
+                                "⚠️ **Conflicting files uploaded:** Please upload either a single file (.csv / .npy) "
+                                "or exactly one matching pair of PTB-XL WFDB files (.hea and .dat)."
+                            )
+                else:
+                    # Dedicated separate uploaders for WFDB
+                    col_h, col_d = st.columns(2)
+                    with col_h:
+                        hea_up = st.file_uploader("1. Header File (.hea):", type=["hea"], help="PTB-XL WFDB .hea header file")
+                    with col_d:
+                        dat_up = st.file_uploader("2. Signal File (.dat):", type=["dat"], help="PTB-XL WFDB .dat binary signal file")
+
+                    if hea_up is not None and dat_up is not None:
+                        try:
+                            active_signal, wfdb_info = parse_and_validate_wfdb(
+                                hea_up.read(), hea_up.name, dat_up.read(), dat_up.name
+                            )
+                            signal_name = f"{wfdb_info['record_name']} (WFDB {int(wfdb_info['fs'])} Hz)"
+                            resample_note = " (Resampled from 500 Hz to 100 Hz)" if wfdb_info.get("resampled") else ""
+                            st.success(f"✓ Validated PTB-XL WFDB Record: {wfdb_info['record_name']} (12 leads, 1000 samples @ 100 Hz){resample_note}")
+                        except Exception as e:
+                            st.error(f"WFDB validation error: {str(e)}")
+                    elif hea_up is not None:
+                        st.info("ℹ️ Uploaded header file. Please also upload the matching `.dat` binary signal file.")
+                    elif dat_up is not None:
+                        st.info("ℹ️ Uploaded signal file. Please also upload the matching `.hea` header file.")
 
                 st.markdown("""
                     <div style="background: #161f30; border: 1px solid #222f44; border-radius: 8px; padding: 10px; font-size: 0.72rem; color: #94a3b8; margin-top: 10px;">
-                        <span style="font-weight: 600; color: #f8fafc; display: block; margin-bottom: 3px;">Supported Specifications:</span>
-                        • Duration: 10 seconds @ 100 Hz (1,000 samples)<br>
-                        • 12 standard leads: I, II, III, aVR, aVL, aVF, V1–V6<br>
-                        • Units: Millivolts (mV)<br>
-                        • Rejects NaN, infinite values, or improper dimensions
+                        <span style="font-weight: 600; color: #f8fafc; display: block; margin-bottom: 3px;">Supported Formats & Specifications:</span>
+                        • <b>WFDB (.hea + .dat):</b> PTB-XL recordings read via official <code>wfdb</code> parser. Supports 100 Hz native (1,000 samples) and 500 Hz (automatically resampled to 100 Hz).<br>
+                        • <b>CSV (.csv):</b> Standard 1,000 time steps × 12 leads (or 12 × 1,000), calibrated in mV.<br>
+                        • <b>NumPy (.npy):</b> Array shape (12, 1000) or (1000, 12).<br>
+                        • Standard leads: I, II, III, aVR, aVL, aVF, V1–V6.
                     </div>
                 """, unsafe_allow_html=True)
 

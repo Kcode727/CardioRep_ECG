@@ -73,11 +73,17 @@ All models were benchmarked across four labeled training data fractions sampled 
 │   ├── methodology.md                  # Comprehensive scientific methodology
 │   └── model_card.md                   # Standardized AI model card
 └── sample_data/
-    ├── generate_samples.py             # Synthetic 12-lead ECG generator
+    ├── generate_samples.py             # Synthetic 12-lead ECG generator (CSV, NPY, WFDB)
     ├── sample_normal_ecg.csv           # Normal sinus rhythm sample (CSV)
+    ├── sample_normal_ecg.npy           # Normal sinus rhythm sample (NumPy)
+    ├── sample_normal_ecg.hea           # Normal sinus rhythm sample (WFDB header)
+    ├── sample_normal_ecg.dat           # Normal sinus rhythm sample (WFDB binary signal)
     ├── sample_mi_ecg.csv               # Acute MI pattern sample (CSV)
+    ├── sample_mi_ecg.hea               # Acute MI sample (WFDB header)
+    ├── sample_mi_ecg.dat               # Acute MI sample (WFDB binary signal)
     ├── sample_cd_ecg.csv               # Conduction disturbance sample (CSV)
-    └── sample_normal_ecg.npy           # Normal sinus rhythm sample (NumPy)
+    ├── sample_cd_ecg.hea               # Conduction disturbance sample (WFDB header)
+    └── sample_cd_ecg.dat               # Conduction disturbance sample (WFDB binary signal)
 ```
 
 ---
