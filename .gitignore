@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Node.js & Frontend (Do not push to Streamlit repository)
+frontend/
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# Backend (Do not push to Streamlit repository)
+backend/
+
+# Temporary / Scratch Files
+.env
+.env.example
+.env.local
+.env.*.local
+*.tmp
+debug_*.*
+full_rendered.html
+test_charts.py
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large Checkpoint Archives & Notebook
+*.zip
+PTBXL_ECG_CNN_AE_VAE_Comparison.ipynb
