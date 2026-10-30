@@ -40,4 +40,6 @@ Thumbs.db
 
 # Large Checkpoint Archives & Notebook
 *.zip
+*.ipynb
 PTBXL_ECG_CNN_AE_VAE_Comparison.ipynb
+Model training.ipynb

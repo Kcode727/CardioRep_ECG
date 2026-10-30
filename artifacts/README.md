@@ -1,21 +1,29 @@
 # Model Artifacts Directory Guide
 
-This directory contains the trained PyTorch model checkpoints extracted from the experiment bundle (`ptbxl_latest_models_50ep.zip`).
+This directory contains the trained PyTorch model checkpoints extracted from the experiment bundle (`ptbxl_all_12_models.zip` and `Model training.ipynb`).
 
 ---
 
 ## 1. Checkpoint Contents & Identification
 
-The original research experiment evaluated 12 models across 4 training fractions (10%, 25%, 50%, 100%) and 3 model representations (Baseline CNN, Autoencoder-pretrained CNN, and Variational-Autoencoder-pretrained CNN).
+The complete research suite contains **all 12 models** evaluated across 4 training fractions (10%, 25%, 50%, 100%) and 3 model representations (Baseline CNN, Autoencoder-pretrained CNN, and Variational-Autoencoder-pretrained CNN), plus the 4 best-per-fraction aliases.
 
-At the conclusion of notebook training (Cell 32), the **top-performing model per labeled fraction** (selected according to highest validation Macro-F1 on official patient fold 9) was exported into the archive.
+### Complete 12-Model Matrix
 
-| Checkpoint File | Representation | Labeled Fraction | Records Trained | Validation Macro-F1 | Test Macro-F1 |
-|---|---|---|---|---|---|
-| `best_model_10pct.pt` | **VAE-CNN** | 10% (0.10) | 350 | 0.6142 | 0.5292 |
-| `best_model_25pct.pt` | **Baseline 1D CNN** | 25% (0.25) | 875 | 0.6332 | 0.5896 |
-| `best_model_50pct.pt` | **AE-CNN** | 50% (0.50) | 1,750 | 0.6704 | 0.6261 |
-| `best_model_100pct.pt` | **AE-CNN** | 100% (1.00) | 3,500 | 0.6985 | 0.6663 |
+| Checkpoint File | Representation | Labeled Fraction | Records Trained | Val Macro-F1 | Test Macro-F1 | Test AUROC |
+|---|---|---|---|---|---|---|
+| `model_VAE_10pct.pt` / `best_model_10pct.pt` | **VAE-CNN** | 10% (0.10) | 1,744 | 0.6665 | **0.6465** | 0.8628 |
+| `model_CNN_10pct.pt` | **Baseline CNN** | 10% (0.10) | 1,744 | 0.6626 | 0.6374 | 0.8618 |
+| `model_AE_10pct.pt` | **AE-CNN** | 10% (0.10) | 1,744 | 0.6578 | 0.6241 | 0.8519 |
+| `model_CNN_25pct.pt` / `best_model_25pct.pt` | **Baseline CNN** | 25% (0.25) | 4,360 | 0.7013 | **0.6833** | 0.8870 |
+| `model_VAE_25pct.pt` | **VAE-CNN** | 25% (0.25) | 4,360 | 0.6814 | 0.6678 | 0.8760 |
+| `model_AE_25pct.pt` | **AE-CNN** | 25% (0.25) | 4,360 | 0.6833 | 0.6613 | 0.8760 |
+| `model_CNN_50pct.pt` / `best_model_50pct.pt` | **Baseline CNN** | 50% (0.50) | 8,720 | 0.7153 | **0.7050** | 0.9025 |
+| `model_VAE_50pct.pt` | **VAE-CNN** | 50% (0.50) | 8,720 | 0.7129 | 0.7028 | 0.8990 |
+| `model_AE_50pct.pt` | **AE-CNN** | 50% (0.50) | 8,720 | 0.7045 | 0.6880 | 0.8927 |
+| `model_CNN_100pct.pt` / `best_model_100pct.pt` | **Baseline CNN** | 100% (1.00) | 17,441 | 0.7333 | **0.7272** | 0.9145 |
+| `model_VAE_100pct.pt` | **VAE-CNN** | 100% (1.00) | 17,441 | 0.7296 | 0.7229 | 0.9140 |
+| `model_AE_100pct.pt` | **AE-CNN** | 100% (1.00) | 17,441 | 0.7170 | 0.7113 | 0.9080 |
 
 ---
 

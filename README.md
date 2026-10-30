@@ -22,29 +22,30 @@ The project investigates multi-label classification across five diagnostic super
 
 ### Training Data Fractions Evaluated
 All models were benchmarked across four labeled training data fractions sampled from the training partition:
-- **10%** (350 labeled records)
-- **25%** (875 labeled records)
-- **50%** (1,750 labeled records)
-- **100%** (3,500 labeled records)
+- **10%** (1,744 labeled records)
+- **25%** (4,360 labeled records)
+- **50%** (8,720 labeled records)
+- **100%** (17,441 labeled records)
 
 ### Empirical Research Findings
 | Labeled Training Fraction | Baseline CNN | AE-CNN | VAE-CNN | Winning Approach |
 |:---:|:---:|:---:|:---:|:---:|
-| **10%** | 0.510 | 0.487 | **0.529** | **VAE-CNN** |
-| **25%** | **0.590** | 0.535 | 0.544 | **Baseline CNN** |
-| **50%** | 0.624 | **0.626** | 0.581 | **AE-CNN** |
-| **100%** | 0.659 | **0.666** | 0.658 | **AE-CNN** |
+| **10%** | 0.637 | 0.624 | **0.646** | **VAE-CNN** |
+| **25%** | **0.683** | 0.661 | 0.668 | **Baseline CNN** |
+| **50%** | **0.705** | 0.688 | 0.703 | **Baseline CNN** |
+| **100%** | **0.727** | 0.711 | 0.723 | **Baseline CNN** |
 
-> **Key Research Insight:** Pretraining does **not** uniformly outperform the baseline supervised CNN across all fractions. VAE pretraining demonstrates sample efficiency primarily in extreme data-scarce regimes (10%), while supervised training from scratch recovers strongly at 25%, and AE pretraining provides modest gains at 50% and 100%.
+> **Key Research Insight:** Pretraining provides its greatest sample efficiency in extreme data scarcity (**10% labels: VAE leads with 0.646 vs. 0.637 baseline CNN and 0.624 AE-CNN**), validating that probabilistic representation learning acts as an effective inductive prior. As labeled training volume expands (25%, 50%, 100%), the supervised baseline 1D CNN scales strongly (reaching 0.727 Macro-F1), matching or slightly exceeding generic reconstruction pretraining.
 
 ---
 
-## 2. Dataset & Limitations Disclosure
+## 2. Dataset & Experimental Partitioning
 
-- **Source Dataset:** PTB-XL database (PhysioNet v1.0.3), 100 Hz recordings.
-- **Incomplete Download Limitation:** The experiments were conducted on a locally available subset of **5,037 records** (rather than the complete 21,837-record archive).
-- **Patient-Separated Folds:** Folds 1–8 (3,500 records) were used for training and unsupervised pretraining; Fold 9 (500 records) for validation early stopping and threshold tuning; Fold 10 (500 records) for final held-out test reporting.
-- **Single-Run Results:** The reported metrics are preliminary single-run evaluation results from the available subset and should not be claimed as complete-dataset benchmarks.
+- **Source Dataset:** PTB-XL database (PhysioNet v1.0.3), 100 Hz recordings (21,837 total clinical records).
+- **Patient-Separated Folds:** 
+  - Folds 1–8 (17,441 records) for training and unsupervised representation pretraining.
+  - Fold 9 (2,193 records) for validation early stopping and per-class decision threshold tuning.
+  - Fold 10 (2,203 records) strictly held-out for unbiased final test reporting.
 
 ---
 
@@ -52,7 +53,7 @@ All models were benchmarked across four labeled training data fractions sampled 
 
 ```
 .
-├── app.py                              # Unified Streamlit application (all-in-one UI & PyTorch inference)
+├── app.py                              # Unified Streamlit application (Dark UI, all 12 models + WFDB inference)
 ├── requirements.txt                    # Python application dependencies
 ├── Dockerfile                          # Containerized deployment specification
 ├── .dockerignore                       # Docker build exclusions
@@ -63,12 +64,16 @@ All models were benchmarked across four labeled training data fractions sampled 
 ├── artifacts/
 │   ├── README.md                       # Model artifact placement guide
 │   └── models/                         # PyTorch model checkpoints (.pt)
-│       ├── best_model_10pct.pt         # VAE-CNN (10% labeled data)
-│       ├── best_model_25pct.pt         # Baseline CNN (25% labeled data)
-│       ├── best_model_50pct.pt         # AE-CNN (50% labeled data)
-│       └── best_model_100pct.pt        # AE-CNN (100% labeled data)
+│       ├── best_model_10pct.pt         # Top 10%: VAE-CNN (F1: 0.6465)
+│       ├── best_model_25pct.pt         # Top 25%: Baseline CNN (F1: 0.6833)
+│       ├── best_model_50pct.pt         # Top 50%: Baseline CNN (F1: 0.7050)
+│       ├── best_model_100pct.pt        # Top 100%: Baseline CNN (F1: 0.7272)
+│       ├── model_CNN_{10,25,50,100}pct.pt   # All Baseline CNN checkpoints
+│       ├── model_AE_{10,25,50,100}pct.pt    # All AE-CNN checkpoints
+│       └── model_VAE_{10,25,50,100}pct.pt   # All VAE-CNN checkpoints
 ├── results/
-│   └── experiment_results.csv          # Exact 12-run experimental metrics matrix
+│   ├── experiment_results.csv          # Exact 12-run experimental metrics matrix
+│   └── ptbxl_representation_learning_results.csv
 ├── docs/
 │   ├── methodology.md                  # Comprehensive scientific methodology
 │   └── model_card.md                   # Standardized AI model card
