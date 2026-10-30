@@ -630,6 +630,7 @@ st.markdown("""
     .cr-badge-amber { background: rgba(245, 158, 11, 0.16); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.35); }
     .cr-badge-violet { background: rgba(139, 92, 246, 0.16); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.35); }
     .cr-badge-slate { background: rgba(148, 163, 184, 0.12); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.25); }
+    .cr-badge-teal { background: rgba(20, 184, 166, 0.16); color: #5eead4; border: 1px solid rgba(20, 184, 166, 0.35); }
 
     /* Segmented Control Dark Styling */
     div[data-testid="stSegmentedControl"] {
@@ -802,8 +803,8 @@ if page == "Research Overview":
                 <p style="font-size: 0.88rem; color: #94a3b8; line-height: 1.6;">
                     In rare cardiac conditions, pediatric cohorts, or resource-constrained healthcare environments, only a 
                     small fraction of signals have validated annotations. This study systematically explores 
-                    training with <b>10% (350 records)</b>, <b>25% (875 records)</b>, 
-                    <b>50% (1,750 records)</b>, and <b>100% (3,500 records)</b> of labeled data to assess 
+                    training with <b>10% (1,744 records)</b>, <b>25% (4,360 records)</b>, 
+                    <b>50% (8,720 records)</b>, and <b>100% (17,441 records)</b> of labeled data to assess 
                     whether unsupervised pretraining provides sample efficiency.
                 </p>
             </div>
@@ -1126,118 +1127,118 @@ elif page == "Model Comparison":
         """, unsafe_allow_html=True)
 
         # NEW SECTION: Significance of Evaluation Metrics
-        st.markdown("""
-            <div class="cr-card" style="margin-top: 16px;">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-                    <span style="font-size: 1.25rem;">📊</span>
-                    <h3 style="font-size: 1.2rem; font-weight: 800; color: #f8fafc; margin: 0;">Significance of Evaluation Metrics: Why Each Metric Matters</h3>
-                </div>
-                <p style="font-size: 0.84rem; color: #94a3b8; margin-bottom: 16px; line-height: 1.5;">
-                    In clinical electrocardiogram (ECG) artificial intelligence, standard accuracy is dangerously deceptive due to severe real-world class imbalance. 
-                    Below is a clear, simple guide explaining what each metric captures, why it was chosen for this research, and how it protects patient safety.
-                </p>
+        st.html("""
+<div class="cr-card" style="margin-top: 16px; background: #111827; border: 1px solid #1f2937; border-radius: 14px; padding: 22px 24px;">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+        <span style="font-size: 1.25rem;">📊</span>
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: #f8fafc; margin: 0;">Significance of Evaluation Metrics: Why Each Metric Matters</h3>
+    </div>
+    <p style="font-size: 0.84rem; color: #94a3b8; margin-bottom: 16px; line-height: 1.5;">
+        In clinical electrocardiogram (ECG) artificial intelligence, standard accuracy is dangerously deceptive due to severe real-world class imbalance. 
+        Below is a clear, simple guide explaining what each metric captures, why it was chosen for this research, and how it protects patient safety.
+    </p>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px;">
-                    <!-- Card 1: Macro-F1 -->
-                    <div style="background: #161f30; border: 1px solid #222f44; border-radius: 10px; padding: 14px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="font-weight: 800; font-size: 0.95rem; color: #f8fafc;">🎯 Macro-F1 Score</span>
-                            <span class="cr-badge cr-badge-emerald" style="margin: 0; font-size: 10px;">Primary Benchmark</span>
-                        </div>
-                        <p style="font-size: 0.80rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
-                            <b>In simple words:</b> The unweighted average of the F1 scores across all 5 disease categories, giving equal weight to every condition.
-                        </p>
-                        <div style="background: #0f172a; border-left: 3px solid #10b981; padding: 8px 10px; border-radius: 4px; font-size: 0.76rem; color: #94a3b8; line-height: 1.45;">
-                            <b style="color: #f8fafc;">Why it's helpful:</b> In real hospitals, healthy patients vastly outnumber rare conditions like Hypertrophy. A "lazy" model that labels every single patient as "Normal" would get 80%+ basic accuracy, yet kill patients with missed heart attacks. Macro-F1 treats common and rare diseases with equal importance, heavily penalizing any model that neglects infrequent abnormalities.
-                        </div>
-                    </div>
-
-                    <!-- Card 2: Micro-F1 -->
-                    <div style="background: #161f30; border: 1px solid #222f44; border-radius: 10px; padding: 14px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="font-weight: 800; font-size: 0.95rem; color: #f8fafc;">🌐 Micro-F1 Score</span>
-                            <span class="cr-badge cr-badge-blue" style="margin: 0; font-size: 10px;">Operational Throughput</span>
-                        </div>
-                        <p style="font-size: 0.80rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
-                            <b>In simple words:</b> The global F1 score calculated by pooling all true positives, false positives, and false negatives across all patients together.
-                        </p>
-                        <div style="background: #0f172a; border-left: 3px solid #3b82f6; padding: 8px 10px; border-radius: 4px; font-size: 0.76rem; color: #94a3b8; line-height: 1.45;">
-                            <b style="color: #f8fafc;">Why it's helpful:</b> While Macro-F1 measures fairness across disease categories, Micro-F1 measures the system's overall diagnostic reliability across every individual clinical decision. It tells hospital administrators how accurately the system handles incoming patient volume on a routine daily basis.
-                        </div>
-                    </div>
-
-                    <!-- Card 3: Macro-AUROC -->
-                    <div style="background: #161f30; border: 1px solid #222f44; border-radius: 10px; padding: 14px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="font-weight: 800; font-size: 0.95rem; color: #f8fafc;">📈 Macro-AUROC</span>
-                            <span class="cr-badge cr-badge-purple" style="margin: 0; font-size: 10px;">Discrimination Power</span>
-                        </div>
-                        <p style="font-size: 0.80rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
-                            <b>In simple words:</b> Measures how well the AI ranks a truly diseased patient higher than a healthy patient, regardless of whether the threshold is set high or low.
-                        </p>
-                        <div style="background: #0f172a; border-left: 3px solid #a855f7; padding: 8px 10px; border-radius: 4px; font-size: 0.76rem; color: #94a3b8; line-height: 1.45;">
-                            <b style="color: #f8fafc;">Why it's helpful:</b> Evaluates raw diagnostic feature representation. A high AUROC (>0.90) proves that the neural network's convolutional filters have captured genuine physiological waveform patterns (such as ST elevation or widened QRS) rather than memorizing noise, independently of any operating cutoff.
-                        </div>
-                    </div>
-
-                    <!-- Card 4: Macro-AUPRC -->
-                    <div style="background: #161f30; border: 1px solid #222f44; border-radius: 10px; padding: 14px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="font-weight: 800; font-size: 0.95rem; color: #f8fafc;">⚡ Macro-AUPRC</span>
-                            <span class="cr-badge cr-badge-amber" style="margin: 0; font-size: 10px;">Alarm Reliability</span>
-                        </div>
-                        <p style="font-size: 0.80rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
-                            <b>In simple words:</b> Area Under the Precision-Recall Curve tests how clean the positive alerts are by tracking Precision vs. Recall across all possible thresholds.
-                        </p>
-                        <div style="background: #0f172a; border-left: 3px solid #f59e0b; padding: 8px 10px; border-radius: 4px; font-size: 0.76rem; color: #94a3b8; line-height: 1.45;">
-                            <b style="color: #f8fafc;">Why it's helpful:</b> In severe class imbalance, AUROC can look deceptively good because of the large pool of true negatives. AUPRC focuses strictly on positive calls, aggressively penalizing false alarms. In an Emergency Department, constant false alarms cause "alarm fatigue"—nurses begin turning monitors off. A high AUPRC ensures that when the AI triggers an alarm, it is clinically actionable.
-                        </div>
-                    </div>
-
-                    <!-- Card 5: Validation vs Test Split -->
-                    <div style="background: #161f30; border: 1px solid #222f44; border-radius: 10px; padding: 14px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="font-weight: 800; font-size: 0.95rem; color: #f8fafc;">🛡️ Val vs. Test F1 Split</span>
-                            <span class="cr-badge cr-badge-indigo" style="margin: 0; font-size: 10px;">Generalizability</span>
-                        </div>
-                        <p style="font-size: 0.80rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
-                            <b>In simple words:</b> Validation F1 (Fold 9) is used during training to tune parameters; Test F1 (Fold 10) is evaluated only once on completely unseen patient recordings.
-                        </p>
-                        <div style="background: #0f172a; border-left: 3px solid #6366f1; padding: 8px 10px; border-radius: 4px; font-size: 0.76rem; color: #94a3b8; line-height: 1.45;">
-                            <b style="color: #f8fafc;">Why it's helpful:</b> Patient-separated cross-validation prevents "data leakage." Evaluating on held-out Fold 10 guarantees that the reported metrics reflect true clinical performance on new patients from external clinics, rather than memorized waveforms from the training set.
-                        </div>
-                    </div>
-
-                    <!-- Card 6: Per-Class F1 Breakdown -->
-                    <div style="background: #161f30; border: 1px solid #222f44; border-radius: 10px; padding: 14px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="font-weight: 800; font-size: 0.95rem; color: #f8fafc;">🫀 Per-Class F1 Scores</span>
-                            <span class="cr-badge cr-badge-rose" style="margin: 0; font-size: 10px;">Condition Specificity</span>
-                        </div>
-                        <p style="font-size: 0.80rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
-                            <b>In simple words:</b> Individual F1 scores for each superclass: Normal (NORM), Infarction (MI), ST/T Changes (STTC), Conduction Blocks (CD), and Hypertrophy (HYP).
-                        </p>
-                        <div style="background: #0f172a; border-left: 3px solid #f43f5e; padding: 8px 10px; border-radius: 4px; font-size: 0.76rem; color: #94a3b8; line-height: 1.45;">
-                            <b style="color: #f8fafc;">Why it's helpful:</b> In cardiology, missing an acute Myocardial Infarction (heart attack) has immediate catastrophic consequences, while detecting a minor ST/T change has lower acute urgency. Tracking per-class F1 ensures clinicians know exactly where the model excels and where extra clinical scrutiny is needed.
-                        </div>
-                    </div>
-
-                    <!-- Card 7: Calibrated Decision Thresholds -->
-                    <div style="background: #161f30; border: 1px solid #222f44; border-radius: 10px; padding: 14px; grid-column: 1 / -1;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="font-weight: 800; font-size: 0.95rem; color: #f8fafc;">⚖️ Calibrated Decision Thresholds (&tau;)</span>
-                            <span class="cr-badge cr-badge-teal" style="margin: 0; font-size: 10px;">Clinical Alignment</span>
-                        </div>
-                        <p style="font-size: 0.80rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
-                            <b>In simple words:</b> Instead of an arbitrary fixed 50% cutoff, each disease gets a mathematically optimized decision threshold (e.g., 0.25 for MI vs. 0.50 for NORM) tuned on validation data.
-                        </p>
-                        <div style="background: #0f172a; border-left: 3px solid #14b8a6; padding: 8px 10px; border-radius: 4px; font-size: 0.76rem; color: #94a3b8; line-height: 1.45;">
-                            <b style="color: #f8fafc;">Why it's helpful:</b> In medicine, false negatives and false positives have vastly unequal costs. For high-risk conditions like Myocardial Infarction, setting a lower threshold (e.g. 0.25) prioritizes high sensitivity so life-threatening heart attacks are rarely missed, while common non-critical classes use higher thresholds to avoid flooding cardiologists with false alarms.
-                        </div>
-                    </div>
-                </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px;">
+        <!-- Card 1: Macro-F1 -->
+        <div style="background: #161f30; border: 1px solid #222f44; border-radius: 10px; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-weight: 800; font-size: 0.95rem; color: #f8fafc;">🎯 Macro-F1 Score</span>
+                <span class="cr-badge cr-badge-emerald" style="margin: 0; font-size: 10px;">Primary Benchmark</span>
             </div>
-        """, unsafe_allow_html=True)
+            <p style="font-size: 0.80rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
+                <b>In simple words:</b> The unweighted average of the F1 scores across all 5 disease categories, giving equal weight to every condition.
+            </p>
+            <div style="background: #0f172a; border-left: 3px solid #10b981; padding: 8px 10px; border-radius: 4px; font-size: 0.76rem; color: #94a3b8; line-height: 1.45;">
+                <b style="color: #f8fafc;">Why it's helpful:</b> In real hospitals, healthy patients vastly outnumber rare conditions like Hypertrophy. A "lazy" model that labels every single patient as "Normal" would get 80%+ basic accuracy, yet kill patients with missed heart attacks. Macro-F1 treats common and rare diseases with equal importance, heavily penalizing any model that neglects infrequent abnormalities.
+            </div>
+        </div>
+
+        <!-- Card 2: Micro-F1 -->
+        <div style="background: #161f30; border: 1px solid #222f44; border-radius: 10px; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-weight: 800; font-size: 0.95rem; color: #f8fafc;">🌐 Micro-F1 Score</span>
+                <span class="cr-badge cr-badge-blue" style="margin: 0; font-size: 10px;">Operational Throughput</span>
+            </div>
+            <p style="font-size: 0.80rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
+                <b>In simple words:</b> The global F1 score calculated by pooling all true positives, false positives, and false negatives across all patients together.
+            </p>
+            <div style="background: #0f172a; border-left: 3px solid #3b82f6; padding: 8px 10px; border-radius: 4px; font-size: 0.76rem; color: #94a3b8; line-height: 1.45;">
+                <b style="color: #f8fafc;">Why it's helpful:</b> While Macro-F1 measures fairness across disease categories, Micro-F1 measures the system's overall diagnostic reliability across every individual clinical decision. It tells hospital administrators how accurately the system handles incoming patient volume on a routine daily basis.
+            </div>
+        </div>
+
+        <!-- Card 3: Macro-AUROC -->
+        <div style="background: #161f30; border: 1px solid #222f44; border-radius: 10px; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-weight: 800; font-size: 0.95rem; color: #f8fafc;">📈 Macro-AUROC</span>
+                <span class="cr-badge cr-badge-purple" style="margin: 0; font-size: 10px;">Discrimination Power</span>
+            </div>
+            <p style="font-size: 0.80rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
+                <b>In simple words:</b> Measures how well the AI ranks a truly diseased patient higher than a healthy patient, regardless of whether the threshold is set high or low.
+            </p>
+            <div style="background: #0f172a; border-left: 3px solid #a855f7; padding: 8px 10px; border-radius: 4px; font-size: 0.76rem; color: #94a3b8; line-height: 1.45;">
+                <b style="color: #f8fafc;">Why it's helpful:</b> Evaluates raw diagnostic feature representation. A high AUROC (>0.90) proves that the neural network's convolutional filters have captured genuine physiological waveform patterns (such as ST elevation or widened QRS) rather than memorizing noise, independently of any operating cutoff.
+            </div>
+        </div>
+
+        <!-- Card 4: Macro-AUPRC -->
+        <div style="background: #161f30; border: 1px solid #222f44; border-radius: 10px; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-weight: 800; font-size: 0.95rem; color: #f8fafc;">⚡ Macro-AUPRC</span>
+                <span class="cr-badge cr-badge-amber" style="margin: 0; font-size: 10px;">Alarm Reliability</span>
+            </div>
+            <p style="font-size: 0.80rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
+                <b>In simple words:</b> Area Under the Precision-Recall Curve tests how clean the positive alerts are by tracking Precision vs. Recall across all possible thresholds.
+            </p>
+            <div style="background: #0f172a; border-left: 3px solid #f59e0b; padding: 8px 10px; border-radius: 4px; font-size: 0.76rem; color: #94a3b8; line-height: 1.45;">
+                <b style="color: #f8fafc;">Why it's helpful:</b> In severe class imbalance, AUROC can look deceptively good because of the large pool of true negatives. AUPRC focuses strictly on positive calls, aggressively penalizing false alarms. In an Emergency Department, constant false alarms cause "alarm fatigue"—nurses begin turning monitors off. A high AUPRC ensures that when the AI triggers an alarm, it is clinically actionable.
+            </div>
+        </div>
+
+        <!-- Card 5: Validation vs Test Split -->
+        <div style="background: #161f30; border: 1px solid #222f44; border-radius: 10px; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-weight: 800; font-size: 0.95rem; color: #f8fafc;">🛡️ Val vs. Test F1 Split</span>
+                <span class="cr-badge cr-badge-indigo" style="margin: 0; font-size: 10px;">Generalizability</span>
+            </div>
+            <p style="font-size: 0.80rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
+                <b>In simple words:</b> Validation F1 (Fold 9) is used during training to tune parameters; Test F1 (Fold 10) is evaluated only once on completely unseen patient recordings.
+            </p>
+            <div style="background: #0f172a; border-left: 3px solid #6366f1; padding: 8px 10px; border-radius: 4px; font-size: 0.76rem; color: #94a3b8; line-height: 1.45;">
+                <b style="color: #f8fafc;">Why it's helpful:</b> Patient-separated cross-validation prevents "data leakage." Evaluating on held-out Fold 10 guarantees that the reported metrics reflect true clinical performance on new patients from external clinics, rather than memorized waveforms from the training set.
+            </div>
+        </div>
+
+        <!-- Card 6: Per-Class F1 Breakdown -->
+        <div style="background: #161f30; border: 1px solid #222f44; border-radius: 10px; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-weight: 800; font-size: 0.95rem; color: #f8fafc;">🫀 Per-Class F1 Scores</span>
+                <span class="cr-badge cr-badge-rose" style="margin: 0; font-size: 10px;">Condition Specificity</span>
+            </div>
+            <p style="font-size: 0.80rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
+                <b>In simple words:</b> Individual F1 scores for each superclass: Normal (NORM), Infarction (MI), ST/T Changes (STTC), Conduction Blocks (CD), and Hypertrophy (HYP).
+            </p>
+            <div style="background: #0f172a; border-left: 3px solid #f43f5e; padding: 8px 10px; border-radius: 4px; font-size: 0.76rem; color: #94a3b8; line-height: 1.45;">
+                <b style="color: #f8fafc;">Why it's helpful:</b> In cardiology, missing an acute Myocardial Infarction (heart attack) has immediate catastrophic consequences, while detecting a minor ST/T change has lower acute urgency. Tracking per-class F1 ensures clinicians know exactly where the model excels and where extra clinical scrutiny is needed.
+            </div>
+        </div>
+
+        <!-- Card 7: Calibrated Decision Thresholds -->
+        <div style="background: #161f30; border: 1px solid #222f44; border-radius: 10px; padding: 14px; grid-column: 1 / -1;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-weight: 800; font-size: 0.95rem; color: #f8fafc;">⚖️ Calibrated Decision Thresholds (&tau;)</span>
+                <span class="cr-badge cr-badge-teal" style="margin: 0; font-size: 10px;">Clinical Alignment</span>
+            </div>
+            <p style="font-size: 0.80rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
+                <b>In simple words:</b> Instead of an arbitrary fixed 50% cutoff, each disease gets a mathematically optimized decision threshold (e.g., 0.25 for MI vs. 0.50 for NORM) tuned on validation data.
+            </p>
+            <div style="background: #0f172a; border-left: 3px solid #14b8a6; padding: 8px 10px; border-radius: 4px; font-size: 0.76rem; color: #94a3b8; line-height: 1.45;">
+                <b style="color: #f8fafc;">Why it's helpful:</b> In medicine, false negatives and false positives have vastly unequal costs. For high-risk conditions like Myocardial Infarction, setting a lower threshold (e.g. 0.25) prioritizes high sensitivity so life-threatening heart attacks are rarely missed, while common non-critical classes use higher thresholds to avoid flooding cardiologists with false alarms.
+            </div>
+        </div>
+    </div>
+</div>
+""")
 
         with st.expander("View Complete 12-Run Experimental Results Table"):
             st.dataframe(df_results, use_container_width=True)
@@ -1660,24 +1661,24 @@ elif page == "Methodology":
             </div>
             <p style="font-size: 0.88rem; color: #94a3b8; line-height: 1.6; margin-bottom: 14px;">
                 The project utilizes the <b>PTB-XL database</b> (v1.0.3), a publicly accessible clinical dataset of 12-lead electrocardiograms 
-                annotated according to SCP-ECG statements. The experimental dataset downloaded for this research comprises 
-                <b>5,037 records</b> structured according to the official patient-separated folds to strictly eliminate data leakage:
+                annotated according to SCP-ECG statements. The complete experimental cohort comprises 
+                <b>21,837 clinical records</b> across 18,885 individual patients, structured according to the official stratified patient-separated folds to strictly eliminate data leakage:
             </p>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
                 <div style="padding: 12px; border-radius: 8px; background: #161f30; border: 1px solid #222f44;">
                     <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Training Set</span>
                     <p style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin: 2px 0;">Folds 1 to 8</p>
-                    <p style="font-size: 0.78rem; color: #94a3b8; margin: 0;">3,500 patient-separated records</p>
+                    <p style="font-size: 0.78rem; color: #94a3b8; margin: 0;">17,441 patient-separated records</p>
                 </div>
                 <div style="padding: 12px; border-radius: 8px; background: #161f30; border: 1px solid #222f44;">
                     <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Validation Set</span>
                     <p style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin: 2px 0;">Fold 9</p>
-                    <p style="font-size: 0.78rem; color: #94a3b8; margin: 0;">500 records (early stopping & thresholds)</p>
+                    <p style="font-size: 0.78rem; color: #94a3b8; margin: 0;">2,193 records (early stopping & thresholds)</p>
                 </div>
                 <div style="padding: 12px; border-radius: 8px; background: #161f30; border: 1px solid #222f44;">
                     <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Held-Out Test Set</span>
                     <p style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin: 2px 0;">Fold 10</p>
-                    <p style="font-size: 0.78rem; color: #94a3b8; margin: 0;">500 records (unbiased final evaluation)</p>
+                    <p style="font-size: 0.78rem; color: #94a3b8; margin: 0;">2,203 records (unbiased final evaluation)</p>
                 </div>
             </div>
         </div>
@@ -1696,7 +1697,7 @@ elif page == "Methodology":
             <p style="font-size: 0.88rem; color: #94a3b8; line-height: 1.6; margin-bottom: 8px;">
                 To prevent data leakage from validation or test sets into the preprocessing pipeline, 
                 <b>per-lead z-score normalization parameters</b> (mean and standard deviation per lead) 
-                were computed exclusively from the 3,500 training recordings:
+                were computed exclusively from the 17,441 training cohort records (Folds 1–8):
             </p>
             <div style="padding: 10px 14px; background: #161f30; border: 1px solid #222f44; border-radius: 8px; font-family: monospace; font-size: 0.82rem; margin-bottom: 8px; color: #f8fafc;">
                 x_normalized = (x - lead_mean) / max(lead_std, 1e-6)
@@ -1739,9 +1740,9 @@ elif page == "Methodology":
                 </div>
             </div>
             <div style="font-size: 0.82rem; color: #94a3b8; line-height: 1.6;">
-                • <b>Supervised Fine-Tuning:</b> AdamW optimizer, learning rate = 1e-3, weight decay = 1e-4, batch size = 64, max 50 epochs.<br>
+                • <b>Supervised Fine-Tuning:</b> Evaluated systematically across 10% (1,744 records), 25% (4,360 records), 50% (8,720 records), and 100% (17,441 records). AdamW optimizer, learning rate = 1e-3, weight decay = 1e-4, batch size = 64, max 50 epochs.<br>
                 • <b>Early Stopping:</b> Monitored validation loss on fold 9 with patience = 5 epochs and minimum delta = 1e-4.<br>
-                • <b>Threshold Calibration:</b> Decision thresholds tuned independently per diagnostic label using grid search (17 candidate thresholds from 0.1 to 0.9) maximizing validation F1.
+                • <b>Threshold Calibration:</b> Decision thresholds tuned independently per diagnostic label using grid search (17 candidate thresholds from 0.1 to 0.9) maximizing validation F1 on fold 9.
             </div>
         </div>
     """, unsafe_allow_html=True)
